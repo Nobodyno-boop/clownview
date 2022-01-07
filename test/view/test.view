@@ -1,0 +1,13 @@
+<div class="container" style="background-color: red">
+        <h2>
+            {% title %}
+        </h2>
+    <article style="background-color: green">
+
+        {% for item  in items %}
+            <div>
+                {% item %}
+            </div>
+        {%endfor%}
+    </article>
+</div>
