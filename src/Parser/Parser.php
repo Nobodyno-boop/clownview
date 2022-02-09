@@ -2,90 +2,107 @@
 
 namespace Clownerie\ClownView\Parser;
 
+use Clownerie\ClownView\Block\Block;
+use Clownerie\ClownView\Block\BlockType;
+use Clownerie\ClownView\Lexer\Lexer;
 use Clownerie\ClownView\Lexer\Source;
-use Clownerie\ClownView\Lexer\tokens\AbstractToken;
-use Clownerie\ClownView\Lexer\tokens\Tokens;
+use Clownerie\ClownView\Lexer\Token\VariableToken;
+use Clownerie\ClownView\Variable\Variable;
 
-class Parser{
-
-    //
-    private array $tree = [];
-    private int $cursor = 0;
+class Parser
+{
+    /**
+     * @var BlockType[]
+     */
+    private array $blocks;
+    private int $curser = 0;
     private Source $source;
-    private array $tokenf = [];
-    private array $block = [];
-    private array $variables = [
-        "items" => [
-            [
-                "item 1"
-            ],
-            [
-                "item 2"
-            ]
-        ]
-    ];
-
-    public function __construct(Source $source){
-        $lc = 0;
-        foreach(preg_split("/((\r?\n)|(\r\n?))/", $source->getSource()) as $line){
-            $re = '/\{(?:\{|\%)\s*(.*)(?:\}|\%)\}/';
-            preg_match_all($re, $line, $matches, PREG_SET_ORDER, 0);
-            if(!empty($matches)){
-//                var_dump($lc);
-                $this->tokenf[] = $lc;
-                $str = explode(" ", $matches[0][1], 2);
-                $this->tree[] = ["content" => $line,"var" => $matches[0][1],"token" =>Tokens::found($str[0]), "islink" => -1, "cursor" => $lc];
-            } else {
-                $this->tree[] = $line;
-            }
-            $lc++;
-        }
-        dump($this->tree);
-        $this->eval();
-//        dump($this->tree);
-
-        echo 'print template';
-
-        $this->print();
-
-
+    private string $final;
+    // $state
+    private int $state;
+    private array $variables;
+    private block $currentBlock;
+    private Variable $var;
+    /**
+     * @param Source $source
+     */
+    public function __construct(Source $source)
+    {
+        $this->source = $source;
+        $this->final = $source->getSource();
     }
 
-    private function eval(){
-        foreach ($this->tree as $item){
-            if(is_array($item)){
-                if(!empty($item["token"])){
-                    $class = $item["token"][1];
-                    $class->execute($this);
-                }
-            }
-            $this->cursor++;
-        }
+
+    public function load($variables)
+    {
+        $this->variables = $variables;
+        $this->var = new Variable($variables);
+
+        $this->__load();
+        // dump($this->blocks);
+        $this->__read();
+        // dump($this->blocks);
+
+        $this->__render();
     }
 
-    public function print(){
-        $str = "";
-        foreach ($this->tree as $item){
-            if(is_array($item)){
-                $str .= $item["content"]."\n";
-            } else{
-                $str .= $item;
-            }
-        }
-
-        echo $str;
-    }
-
-    public static function load(Source $source): Parser{
+    public static function newInstance(Source $source)
+    {
         return new Parser($source);
+    }
+
+    private function __load()
+    {
+        preg_match_all(Lexer::start(), $this->source->getSource(), $pos, PREG_OFFSET_CAPTURE);
+        preg_match_all(Lexer::start(1), $this->source->getSource(), $epos, PREG_OFFSET_CAPTURE);
+        $start = $pos[0];
+        $end = $epos[0];
+        if (count($start) === count($end)) {
+            for ($i=0; $i < count($start); $i++) {
+                $st = $start[$i];
+                $en = $end[$i];
+
+                $sub = substr($this->source->getSource(), $st[1], $en[1] - $st[1] +2);
+                $block = new Block($sub, $st[1], $en[1]);
+
+                $this->blocks[] = $block;
+            }
+        } else {
+            throw new \Error($this->source->getSource());
+        } // {{}} miss one of this
+    }
+
+
+    public function __read()
+    {
+        if (count($this->blocks) >=1) {
+            foreach ($this->blocks as $block) {
+                $this->currentBlock = $block;
+                $block->getType()->execute($this);
+                $this->curser++;
+            }
+        }
+    }
+
+    public function stream(): ParserStream
+    {
+        return new ParserStream($this);
+    }
+
+    /**
+     * @return Block[]
+     */
+    public function getBlocks(): array
+    {
+        return $this->blocks;
     }
 
     /**
      * @return int
      */
-    public function getCursor(): int
+    public function getCurser(): int
     {
-        return $this->cursor;
+        return $this->curser;
     }
 
     /**
@@ -96,96 +113,12 @@ class Parser{
         return $this->source;
     }
 
-
-    public function diff(int $cursor = -1): bool{
-        $cursor = $cursor == -1 ? $this->cursor : $cursor;
-        return empty($this->tree[$cursor]);
-    }
-
-    public function getLine(): string{
-        return $this->diff() ? $this->tree[$this->cursor] : $this->tree[$this->cursor]["content"];
-    }
-
     /**
-     * @return array
+     * @return string
      */
-    public function getToken(): array
+    public function getFinal(): string
     {
-        return $this->tree[$this->getCursor()];
-    }
-
-    public function nextToken(string $name = "") : array {
-        if(empty($name)){
-            $arr = array_filter($this->tokenf, function ($item){
-                return $this->cursor < $item;
-            });
-
-            return $arr;
-        } else {
-            $arr = array_filter($this->tokenf, function ($item){
-                return $this->cursor < $item;
-            });
-            $v = [];
-            foreach ($arr as $value){
-                if(is_array($this->tree[$value])){
-                    if($this->tree[$value]["var"] == $name){
-                        $v = $this->tree[$value];
-                        break;
-                    }
-                }
-            }
-            return $v;
-        }
-
-    }
-
-    public function nextValidToken(): array {
-        $arr = $this->nextToken();
-        $v = [];
-        foreach ($arr as $value){
-            if(is_array($this->tree[$value])){
-                if(!empty($this->tree[$value]["token"])){
-                    $v = $this->tree[$value];
-                    break;
-                }
-            }
-        }
-
-        return $v;
-    }
-
-    public function updateToken($data, int $cursor = -1){
-        $cursor = $cursor == -1 ? $this->cursor : $cursor;
-//        dump($cursor);
-        if(!$this->diff($cursor)){
-            $this->tree[$cursor] = $data;
-        }
-    }
-
-    public function createBlock(int $start = -1, $end = -1){
-        $start = $start == -1 ? $this->cursor : $start;
-        $end = $end == -1 ? $this->cursor : $end;
-
-        $slc = array_slice($this->tree, $start, $end);
-        return $slc;
-    }
-
-    public function cloneTree():array{
-        return array_merge([], $this->tree);
-    }
-
-
-
-    public function replaceToken($start, $length, $data){
-        $i =1;
-        $clone = array_merge([], $this->tree);
-        $st = array_splice($clone, 0, count($this->tree)-$start);
-        $cloneTree = $this->cloneTree();
-        $nd = array_splice($cloneTree, $start + $length+1, $length);
-
-        $nwarray = array_merge($st, ...$data);
-        $nwarray = array_merge($nwarray, $nd);
-        $this->tree = $nwarray;
+        return $this->final;
     }
 
     /**
@@ -196,6 +129,54 @@ class Parser{
         return $this->variables;
     }
 
+    /**
+     * @param BlockType[] $blocks
+     */
+    public function setBlocks(array $blocks): void
+    {
+        $this->blocks = $blocks;
+    }
 
+    /**
+     * @return int
+     */
+    public function getState(): int
+    {
+        return $this->state;
+    }
 
+    /**
+     * @return Block
+     */
+    public function getCurrentBlock(): Block
+    {
+        return $this->currentBlock;
+    }
+
+    private function __render()
+    {
+        $this->curser = 0;
+        $blocks = $this->blocks;
+        $txt = $this->getSource()->getSource();
+
+        foreach ($blocks as $block) {
+            $txt = $this->__replace($block, $txt);
+            dump($txt);
+        }
+    }
+
+    private function __replace(BlockType $blockType, string $text):string
+    {
+        if ($blockType->getType() instanceof VariableToken) {
+            dump(strlen($text));
+            dump($blockType->getStart());
+            dump($blockType->getEnd());
+            dump($blockType);
+            $t = substr_replace($text, "", $blockType->getStart(), $blockType->getEnd() - $blockType->getStart() + 2);
+            dump($t);
+            // dump($blockType->getSource());
+        }
+
+        return $text;
+    }
 }

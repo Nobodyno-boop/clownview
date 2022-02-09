@@ -3,9 +3,11 @@
 namespace Clownerie\ClownView\Loader;
 
 use Clownerie\ClownView\Lexer\Source;
+use Clownerie\ClownView\Parser\OldParser;
 use Clownerie\ClownView\Parser\Parser;
 
-class Loader {
+class Loader
+{
     private $config;
 
     /*
@@ -23,22 +25,34 @@ class Loader {
     }
 
 
-    public function loadView(string $name){
-        if(!str_contains($name, ".")){
+    public function loadView(string $name)
+    {
+        if (!str_contains($name, ".")) {
             $name = $name.".view";
         }
         $path = $this->config["path"].$name;
-        if(file_exists($path)){
+        if (file_exists($path)) {
             $str = file_get_contents($path);
-            if(is_string($str)){
-                $source = new Source($str, $name,$path);
+            if (is_string($str)) {
+                $source = new Source($str, $name, $path);
                 $this->cache[] = $source;
                 dump($this->cache);
 
-                Parser::load($source);
-            } else throw new \Exception("Cannot load the view ! path: {$path}");
-        } else throw new \Exception("Cannot load the view ! path: {$path}");
+                $parser = Parser::newInstance($source);
+                $parser->load([
+                    "zizi" => "caca",
+                    "items" => [
+                        ["id" => 1],
+                        ["id" => 2],
+                        ["id" => 3],
+                        "type" => "tokens"
+                    ]
+                ]);
+            } else {
+                throw new \Exception("Cannot load the view ! path: {$path}");
+            }
+        } else {
+            throw new \Exception("Cannot load the view ! path: {$path}");
+        }
     }
-
-
 }

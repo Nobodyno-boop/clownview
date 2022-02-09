@@ -15,7 +15,7 @@ class ClownView
     {
         $this->config = $config;
 
-        if(!$this->verifyConfig()){
+        if (!$this->verifyConfig()) {
             throw new \Exception("Config Error !");
         }
 
@@ -23,9 +23,9 @@ class ClownView
     }
 
 
-    private function verifyConfig() : bool {
-        if(!array_key_exists("path", $this->config)){
-
+    private function verifyConfig() : bool
+    {
+        if (!array_key_exists("path", $this->config)) {
             return false;
         }
 
@@ -35,17 +35,17 @@ class ClownView
     /**
      * @throws \Exception
      */
-    public static function newInstance(array $array) : ClownView{
+    public static function newInstance(array $array) : ClownView
+    {
         return new ClownView($array);
     }
 
-    public function load(string $name){
+    public function load(string $name)
+    {
         try {
             $this->loader->loadView($name);
-        }catch (\Exception $e){
+        } catch (\Exception $e) {
             die($e);
         }
     }
-
-
 }

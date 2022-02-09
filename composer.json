@@ -15,6 +15,7 @@
     }
   },
   "require": {
-    "symfony/var-dumper": "v2.8.52"
+    "symfony/var-dumper": "v6.0.3",
+    "spatie/ignition": "1.0.2"
   }
 }

@@ -1,13 +1,14 @@
 <div class="container" style="background-color: red">
         <h2>
-            {% title %}
+            {{ title.name }} - {{ title.sub }}
         </h2>
     <article style="background-color: green">
 
-        {% for item  in items %}
+        {% for item in items %}
             <div>
                 {% item %}
             </div>
+        <a href="#{% item %}"></a>
         {%endfor%}
     </article>
 </div>

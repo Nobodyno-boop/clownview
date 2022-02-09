@@ -1,11 +1,13 @@
 <?php
-
 require "../vendor/autoload.php";
-
+\Spatie\Ignition\Ignition::make()
+    ->register();
 
 $view = \Clownerie\ClownView\ClownView::newInstance([
     "path" => "./view/"
 ]);
 
-// by token is load .view
+
+
+
 $view->load("test");

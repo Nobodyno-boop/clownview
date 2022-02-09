@@ -1,9 +1,8 @@
 <?php
 
-namespace Clownerie\ClownView\Lexer\tokens;
+namespace Clownerie\ClownView\Lexer\Oldtokens;
 
-use Clownerie\ClownView\Parser\Parser;
-
+use Clownerie\ClownView\Parser\OldParser;
 
 /**
  *  Exemple:
@@ -14,8 +13,7 @@ use Clownerie\ClownView\Parser\Parser;
  */
 class ForToken extends AbstractToken
 {
-
-    public function execute(Parser $parser): void
+    public function execute(OldParser $parser): void
     {
         $start = $parser->getCursor();
         $arr = $parser->getToken();
@@ -37,8 +35,8 @@ class ForToken extends AbstractToken
         foreach ($var as $v) {
             $item = $v[0];
             $clone = array_merge([], $block);
-            $blo = array_map(function ($value) use ($item,  $parser){
-                if(is_array($value)){
+            $blo = array_map(function ($value) use ($item, $parser) {
+                if (is_array($value)) {
                     $value["content"] = str_replace($value["content"], $item, $value["content"]);
                     $value["cursor"] = -1; // to avoid error
                     return $value;
@@ -49,7 +47,6 @@ class ForToken extends AbstractToken
         }
         // merge array (by cutting -> merge all)
         $parser->replaceToken($start+1, count($block), $ch);
-
     }
 
     public function tag(): string

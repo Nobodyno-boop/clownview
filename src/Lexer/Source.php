@@ -43,8 +43,4 @@ class Source
     {
         return $this->path;
     }
-
-
-
-
 }
